@@ -37,20 +37,39 @@ app.use(helmet({
 }));
 
 // Restrict CORS to configured origins
-const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:5173';
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, server-to-server) or matching frontend
-    if (!origin || origin === allowedOrigin || origin === 'http://localhost:5173' || origin === 'http://127.0.0.1:5173') {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS access denied by enterprise security policy'));
+// Restrict CORS: allow same-origin (Render), the configured frontend, and local dev
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.RENDER_EXTERNAL_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+]
+  .filter(Boolean)
+  .map((o) => o.replace(/\/+$/, ''));
+
+app.use(cors((req, callback) => {
+  const origin = req.header('Origin');
+  let allowed = false;
+
+  if (!origin) {
+    allowed = true;
+  } else if (allowedOrigins.includes(origin)) {
+    allowed = true;
+  } else {
+    try {
+      allowed = new URL(origin).host === req.header('Host');
+    } catch (e) {
+      allowed = false;
     }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+  }
+
+  callback(null, {
+    origin: allowed,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  });
+}));  
 
 // Logging (sanitized)
 if (process.env.NODE_ENV !== 'test') {
