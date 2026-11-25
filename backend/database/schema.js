@@ -1,6 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const dbPath = process.env.DB_PATH || './data/irms.db';
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'irms.db');
 
